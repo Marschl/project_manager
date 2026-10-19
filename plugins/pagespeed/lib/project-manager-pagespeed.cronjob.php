@@ -6,19 +6,57 @@ class rex_cronjob_project_manager_pagespeed extends rex_cronjob
     public function execute() {
       
       $count = rex_sql::factory()->setDebug(0)->getArray('SELECT count(*) as count FROM rex_project_manager_domain');
-      if ($count[0]['count'] <= 10) {
-        $count = 1;
-      } else {
-        $count = $count[0]['count'] / 10;
-        $count = round($count, 0, PHP_ROUND_HALF_UP);
-      }      
+      $blocks = max(1, (int) ceil($count[0]['count'] / 10));
       
-      for ($i = 0; $i < $count; $i++) {
-        $this->getData();
+      $limit = $this->getTimeLimit();
+      $start = microtime(true);
+      $success = true;
+      
+      for ($i = 0; $i < $blocks; $i++) {
+        $blockStart = microtime(true);
+        
+        if (!$this->getData()) {
+          $success = false;
+        }
+        
+        // Weiteren Block nur starten, wenn die Zeit reicht. Die Projekte werden nach dem
+        // ältesten Eintrag abgearbeitet, der Rest folgt im nächsten Lauf.
+        $lastBlock = microtime(true) - $blockStart;
+        if ($i + 1 < $blocks && !self::hasTimeForNextBlock(microtime(true) - $start, $lastBlock, $limit)) {
+          if ($success) {
+            $this->setMessage(($i + 1) . ' von ' . $blocks . ' Blöcken, Rest im nächsten Lauf (max_execution_time ' . $limit . ' s)');
+          }
+          break;
+        }
       }
       
-      return true;
+      return $success;
       
+    }
+    
+    /**
+     * max_execution_time in Sekunden, 0 = unbegrenzt
+     */
+    protected function getTimeLimit() {
+      return (int) ini_get('max_execution_time');
+    }
+    
+    /**
+     * Reicht die Zeit für einen weiteren Block? Als Dauer eines Blocks gilt das
+     * Anderthalbfache des zuletzt gemessenen Blocks (mit Reserve für das Schreiben).
+     *
+     * @param float $elapsed   bisherige Laufzeit in Sekunden
+     * @param float $lastBlock Dauer des letzten Blocks in Sekunden
+     * @param int   $limit     max_execution_time in Sekunden, 0 = unbegrenzt
+     *
+     * @return bool
+     */
+    public static function hasTimeForNextBlock($elapsed, $lastBlock, $limit) {
+      if ($limit <= 0) {
+        return true;
+      }
+      
+      return $elapsed + 1.5 * $lastBlock < $limit;
     }
     
     public function getData() {
