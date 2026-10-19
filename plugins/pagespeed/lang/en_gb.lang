@@ -7,6 +7,8 @@ project_manager_pagespeed_api_key_title = Settings
 project_manager_pagespeed_api_key_label = PageSpeed API key
 project_manager_pagespeed_api_key_notice = PageSpeed API key, ex. <code>AIzaSyCp0Em_UPY78238es-9CZViEbq7CB_zcFBs</code>
 project_manager_pagespeed_domain_norows_message = No entries found
+project_manager_pagespeed_refresh_hint = Up to date (status ok, younger than 24 hours): {0} of {1} projects. The Google API allows {2} queries per minute, so each click only updates part of the projects. Please click again after about a minute until all are up to date.
+project_manager_pagespeed_refresh_wait = Next request possible in {0} s.
 project_manager_cronjob_pagespeed_name = Project manager: get PageSpeed data
 
 

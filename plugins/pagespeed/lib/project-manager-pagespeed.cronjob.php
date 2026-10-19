@@ -72,6 +72,15 @@ class rex_cronjob_project_manager_pagespeed extends rex_cronjob
      * Abfragen pro Minute. Startwert 30, wird aus der Fehlerantwort der API übernommen (siehe learnRateLimit()).
      */
     protected function getRateLimit() {
+      return self::currentRateLimit();
+    }
+    
+    /**
+     * Abfragen pro Minute (gespeicherter Wert oder Startwert 30)
+     *
+     * @return int
+     */
+    public static function currentRateLimit() {
       return (int) rex_config::get(self::CONFIG_NAMESPACE, 'project_manager_pagespeed_rate_limit', self::DEFAULT_RATE_LIMIT);
     }
     
@@ -87,13 +96,44 @@ class rex_cronjob_project_manager_pagespeed extends rex_cronjob
      * Sekunden, die bis zum nächsten erlaubten Blockstart noch fehlen (0 = sofort).
      */
     protected function secondsToWait($perMinute) {
+      return self::secondsUntilNextBlock($perMinute, $this->now());
+    }
+    
+    /**
+     * @param int   $perMinute Abfragen pro Minute, 0 = keine Drosselung
+     * @param float $now       aktuelle Zeit (microtime)
+     *
+     * @return int
+     */
+    public static function secondsUntilNextBlock($perMinute, $now) {
       if ($perMinute <= 0) {
         return 0;
       }
       
       $last = (float) rex_config::get(self::CONFIG_NAMESPACE, 'project_manager_pagespeed_last_block', 0);
       
-      return max(0, (int) ceil($last + self::minBlockInterval($perMinute) - $this->now()));
+      return max(0, (int) ceil($last + self::minBlockInterval($perMinute) - $now));
+    }
+    
+    /**
+     * Wie viele Projekte haben einen aktuellen PageSpeed-Wert (Status 1, nicht älter als $hours Stunden)?
+     *
+     * @param array[] $items Zeilen mit status_psi und createdate_psi
+     * @param int     $hours
+     * @param int     $now   Unix-Zeit
+     *
+     * @return int
+     */
+    public static function countCurrent(array $items, $hours, $now) {
+      $current = 0;
+      
+      foreach ($items as $item) {
+        if (isset($item['status_psi'], $item['createdate_psi']) && 1 == $item['status_psi'] && strtotime($item['createdate_psi']) >= $now - $hours * 3600) {
+          $current++;
+        }
+      }
+      
+      return $current;
     }
     
     /**
