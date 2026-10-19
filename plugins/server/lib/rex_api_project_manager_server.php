@@ -47,7 +47,7 @@ class rex_api_project_manager_server extends rex_api_function
           }
           
           // reload data          
-          $response = project_manager_client_api::fetch(project_manager_client_api::getUrls($protocol, $domain, 'rex-api-call=project_manager&api_key='.$api_key.'&t='.$timestamp.$param), $options);
+          $response = project_manager_client_api::fetch(project_manager_client_api::getUrls($protocol, $domain, 'rex-api-call=project_manager&api_key='.$api_key.'&t='.$timestamp.$param), $options, $attempts);
           $resp = $response;
           $json = json_decode($resp, true);
           
@@ -64,11 +64,13 @@ class rex_api_project_manager_server extends rex_api_function
             } else {
               // SET STATUS
               rex_sql::factory()->setDebug(0)->setQuery("UPDATE " . rex::getTable('project_manager_domain') . " SET status = ?, updatedate = NOW()WHERE id = ?", [0, $project_manager_domain[0]['id']]);
+              project_manager_logger::failure($domain, 'API meldet status=' . (int) $json['status'] . ' (z. B. falscher API-Schlüssel)');
             }
             
           } else {
             // SET STATUS
             rex_sql::factory()->setDebug(0)->setQuery("UPDATE " . rex::getTable('project_manager_domain') . " SET status = ?, updatedate = NOW() WHERE id = ?", [-1, $project_manager_domain[0]['id']]);
+            project_manager_logger::failure($domain, project_manager_client_api::formatAttempts(isset($attempts) ? $attempts : array()));
           }          
           rex_sql::factory()->setDebug(0)->setQuery("UPDATE " . rex::getTable('project_manager_domain') . " SET updatedate = NOW() WHERE id = ?", [$project_manager_domain[0]['id']]);            
           
@@ -77,7 +79,7 @@ class rex_api_project_manager_server extends rex_api_function
         if($func == "updateData") {
           
           // reload data
-          $response = project_manager_client_api::fetch(project_manager_client_api::getUrls($protocol, $domain, 'rex-api-call=project_manager&api_key='.$api_key.'&t='.$timestamp.$param), $options);
+          $response = project_manager_client_api::fetch(project_manager_client_api::getUrls($protocol, $domain, 'rex-api-call=project_manager&api_key='.$api_key.'&t='.$timestamp.$param), $options, $attempts);
           $resp = $response;
           $json = json_decode($resp, true);
           $json_result = json_encode($json);
@@ -103,6 +105,7 @@ class rex_api_project_manager_server extends rex_api_function
             } else {
               // SET STATUS
               rex_sql::factory()->setDebug(0)->setQuery("UPDATE " . rex::getTable('project_manager_domain') . " SET status = ?, updatedate = NOW()WHERE id = ?", [0, $project_manager_domain[0]['id']]);
+              project_manager_logger::failure($domain, 'API meldet status=' . (int) $json['status'] . ' (z. B. falscher API-Schlüssel)');
               
               // WRITE LOGFILE
               project_manager_logger::log('Status 0', 'Project Manager Server');
@@ -111,6 +114,7 @@ class rex_api_project_manager_server extends rex_api_function
           } else {
             // SET STATUS
             rex_sql::factory()->setDebug(0)->setQuery("UPDATE " . rex::getTable('project_manager_domain') . " SET status = ?, updatedate = NOW() WHERE id = ?", [-1, $project_manager_domain[0]['id']]);
+            project_manager_logger::failure($domain, project_manager_client_api::formatAttempts(isset($attempts) ? $attempts : array()));
             
             //WRITE LOGFILE
             project_manager_logger::log('Status -1', 'Project Manager Server');

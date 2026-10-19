@@ -22,6 +22,16 @@ class project_manager_logger extends rex_log_file
     self::$logfile->add($data);
   }
   
+  /**
+   * Fehlschlag eines Abrufs mit Ursache. Anders als das Projekt-Log (wird bei jedem
+   * Abruf neu angelegt) bleibt dieses Protokoll über mehrere Läufe erhalten.
+   */
+  public static function failure($domain, $reason)
+  {
+    $log = new rex_log_file(rex_path::log('project_manager_failures.log'), 200000);
+    $log->add([date(self::DATE_FORMAT, time()), $domain, $reason]);
+  }
+
   public static function getPath($domain)
   {
     return rex_path::log('project_manager_'.$domain.'_last.log');

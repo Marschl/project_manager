@@ -54,18 +54,21 @@ class project_manager_client_api
      * Einzelner Abruf, bei ungültiger Antwort mit der nächsten URL.
      *
      * @param string[] $urls
-     * @param array    $options curl-Optionen (ohne CURLOPT_URL)
+     * @param array    $options  curl-Optionen (ohne CURLOPT_URL)
+     * @param array    $attempts optional: Beschreibung jedes Versuchs (siehe describe())
      *
      * @return string|false Antwort der letzten versuchten URL
      */
-    public static function fetch(array $urls, array $options)
+    public static function fetch(array $urls, array $options, &$attempts = null)
     {
         $response = false;
+        $attempts = [];
 
         foreach ($urls as $url) {
             $curl = curl_init();
             curl_setopt_array($curl, [CURLOPT_URL => $url] + $options);
             $response = curl_exec($curl);
+            $attempts[] = self::describe($curl, $url, $response);
 
             if (self::isValidResponse($response)) {
                 break;
@@ -81,12 +84,14 @@ class project_manager_client_api
      *
      * @param array[] $urlsByKey z. B. [domain => [url1, url2]]
      * @param array   $options   curl-Optionen (ohne CURLOPT_URL)
+     * @param array   $attempts  optional: Beschreibung der Versuche je Schlüssel (siehe describe())
      *
      * @return array<string, string|null> Antwort je Schlüssel (letzter Versuch)
      */
-    public static function fetchMulti(array $urlsByKey, array $options)
+    public static function fetchMulti(array $urlsByKey, array $options, &$attempts = null)
     {
         $responses = [];
+        $attempts = [];
         $rounds = $urlsByKey ? max(array_map('count', $urlsByKey)) : 0;
 
         for ($round = 0; $round < $rounds; ++$round) {
@@ -125,8 +130,13 @@ class project_manager_client_api
                 }
             }
 
+            // erst danach sind curl_errno()/curl_error() der einzelnen Handles gesetzt
+            while (curl_multi_info_read($multi)) {
+            }
+
             foreach ($handles as $key => $handle) {
                 $responses[$key] = curl_multi_getcontent($handle);
+                $attempts[$key][] = self::describe($handle, $urlsByKey[$key][$round], $responses[$key]);
                 curl_multi_remove_handle($multi, $handle);
             }
 
@@ -134,5 +144,66 @@ class project_manager_client_api
         }
 
         return $responses;
+    }
+
+    /**
+     * Beschreibt einen Versuch für das Fehlerprotokoll. Enthält bewusst nur den
+     * Pfad der URL, nie die Query (API-Schlüssel) und nie den Antwortinhalt.
+     *
+     * @param resource|\CurlHandle $handle
+     * @param string               $url
+     * @param mixed                $response
+     *
+     * @return array{path: string, errno: int, error: string, http: int, time: float, redirects: int, final_path: string, bytes: int, valid: bool}
+     */
+    private static function describe($handle, $url, $response)
+    {
+        $path = parse_url($url, PHP_URL_PATH);
+        $finalPath = parse_url((string) curl_getinfo($handle, CURLINFO_EFFECTIVE_URL), PHP_URL_PATH);
+
+        return [
+            'path' => $path ? $path : '/',
+            'errno' => curl_errno($handle),
+            'error' => curl_error($handle),
+            'http' => (int) curl_getinfo($handle, CURLINFO_HTTP_CODE),
+            'time' => round((float) curl_getinfo($handle, CURLINFO_TOTAL_TIME), 1),
+            'redirects' => (int) curl_getinfo($handle, CURLINFO_REDIRECT_COUNT),
+            'final_path' => $finalPath ? $finalPath : '/',
+            'bytes' => is_string($response) ? strlen($response) : 0,
+            'valid' => self::isValidResponse($response),
+        ];
+    }
+
+    /**
+     * Ursache der fehlgeschlagenen Versuche als eine Zeile, z. B.
+     * "/index.php: kein JSON (HTTP 200, 1 Redirect auf /, 0 Byte); /: cURL-Fehler 28 nach 5.0 s".
+     *
+     * @param array $attempts Versuche eines Projekts (Ergebnis von fetch()/fetchMulti())
+     *
+     * @return string
+     */
+    public static function formatAttempts(array $attempts)
+    {
+        $parts = [];
+
+        foreach ($attempts as $attempt) {
+            if ($attempt['errno']) {
+                // falls eine cURL-Meldung die URL enthält: API-Schlüssel nicht ins Protokoll übernehmen
+                $error = preg_replace('/api_key=[^&\s]*/', 'api_key=***', preg_replace('/\s+/', ' ', $attempt['error']));
+                $reason = 'cURL-Fehler ' . $attempt['errno'] . ' (' . $error . ') nach ' . $attempt['time'] . ' s';
+            } elseif ($attempt['http'] >= 400) {
+                $reason = 'HTTP ' . $attempt['http'];
+            } else {
+                $reason = 'kein JSON (HTTP ' . $attempt['http'];
+                if ($attempt['redirects'] > 0) {
+                    $reason .= ', ' . $attempt['redirects'] . ' Redirect' . (1 === $attempt['redirects'] ? '' : 's') . ' auf ' . $attempt['final_path'];
+                }
+                $reason .= ', ' . $attempt['bytes'] . ' Byte)';
+            }
+
+            $parts[] = $attempt['path'] . ': ' . $reason;
+        }
+
+        return $parts ? implode('; ', $parts) : 'keine Antwort';
     }
 }
