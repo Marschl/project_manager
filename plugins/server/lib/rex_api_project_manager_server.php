@@ -18,26 +18,23 @@ class rex_api_project_manager_server extends rex_api_function
         $param = '&'.implode('&', $param);
         $api_key = rex_request('api_key','string');
         $timestamp = time();
+        $options = array(
+          CURLOPT_FOLLOWLOCATION => true,
+          CURLOPT_AUTOREFERER    => true,
+          CURLOPT_MAXREDIRS      => 5,
+          CURLOPT_HEADER         => false,
+          CURLOPT_SSL_VERIFYPEER => false,
+          CURLOPT_SSL_VERIFYHOST => false,
+          CURLOPT_RETURNTRANSFER => true,
+          CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:86.0) Gecko/20100101 Firefox/86.0',
+          CURLOPT_TIMEOUT => 5
+        );
         
         if($func == "delLog") {
 
           // ?rex-api-call=project_manager&api_key=634de6b36b4b4fde90e09c0a9588a7df&func=delLog&t=1549014945&_=1549014940721
           
-          $url = $protocol.urlencode($domain).'/?rex-api-call=project_manager&api_key='.$api_key.'&func='.$func.$param;          
-          $curl = curl_init();
-          curl_setopt_array($curl, array(
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_AUTOREFERER    => true,
-            CURLOPT_MAXREDIRS      => 5,
-            CURLOPT_HEADER         => false,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:86.0) Gecko/20100101 Firefox/86.0',
-            CURLOPT_TIMEOUT => 5,
-            CURLOPT_URL => $url
-          ));
-          $resp = curl_exec($curl);
+          $resp = project_manager_client_api::fetch(project_manager_client_api::getUrls($protocol, $domain, 'rex-api-call=project_manager&api_key='.$api_key.'&func='.$func.$param), $options);
          
           $json = json_decode($resp, true);
             
@@ -50,22 +47,7 @@ class rex_api_project_manager_server extends rex_api_function
           }
           
           // reload data          
-          $url = $protocol.urlencode($domain)."/index.php?rex-api-call=project_manager&api_key=".$api_key.'&t='.$timestamp.$param;
-          $curl = curl_init();
-          curl_setopt_array($curl, array(
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_AUTOREFERER    => true,
-            CURLOPT_MAXREDIRS      => 5,
-            CURLOPT_HEADER         => false,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:86.0) Gecko/20100101 Firefox/86.0',
-            CURLOPT_TIMEOUT => 5,
-            CURLOPT_URL => $url
-          ));          
-
-          $response = curl_exec($curl);
+          $response = project_manager_client_api::fetch(project_manager_client_api::getUrls($protocol, $domain, 'rex-api-call=project_manager&api_key='.$api_key.'&t='.$timestamp.$param), $options);
           $resp = $response;
           $json = json_decode($resp, true);
           
@@ -95,21 +77,7 @@ class rex_api_project_manager_server extends rex_api_function
         if($func == "updateData") {
           
           // reload data
-          $url = $protocol.urlencode($domain)."/index.php?rex-api-call=project_manager&api_key=".$api_key.'&t='.$timestamp.$param;
-          $curl = curl_init();
-          curl_setopt_array($curl, array(
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_AUTOREFERER    => true,
-            CURLOPT_MAXREDIRS      => 5,
-            CURLOPT_HEADER         => false,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 5,
-            CURLOPT_URL => $url
-          ));
-          
-          $response = curl_exec($curl);
+          $response = project_manager_client_api::fetch(project_manager_client_api::getUrls($protocol, $domain, 'rex-api-call=project_manager&api_key='.$api_key.'&t='.$timestamp.$param), $options);
           $resp = $response;
           $json = json_decode($resp, true);
           $json_result = json_encode($json);
