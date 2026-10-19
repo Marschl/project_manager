@@ -32,10 +32,10 @@ class rex_cronjob_project_manager_data extends rex_cronjob
             
             $timestamp = time();
             
-            $url = $protocol.urlencode($domain)."/index.php?rex-api-call=project_manager&api_key=".$website['api_key'].'&t='.$timestamp.$param;
+            $url = $protocol.urlencode($domain)."/?rex-api-call=project_manager&api_key=".$website['api_key'].'&t='.$timestamp.$param;
             
             if ($cms == 5)
-              $url = $protocol.urlencode($domain)."/index.php?rex-api-call=project_manager&api_key=".$website['api_key'].'&t='.$timestamp.$param;
+              $url = $protocol.urlencode($domain)."/?rex-api-call=project_manager&api_key=".$website['api_key'].'&t='.$timestamp.$param;
             
             if ($cms == 4)
               $url = $protocol.urlencode($domain)."/project_manager_client.php?rex-api-call=project_manager&api_key=".$website['api_key'].'&t='.$timestamp.$param;
