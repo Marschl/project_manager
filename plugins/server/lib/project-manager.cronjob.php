@@ -37,7 +37,7 @@ class rex_cronjob_project_manager_data extends rex_cronjob
         }
         
         // erst "/index.php?rex-api-call", bei ungültiger Antwort zusätzlich "/?rex-api-call"
-        $responses = project_manager_client_api::fetchMulti($urls, $options);
+        $responses = project_manager_client_api::fetchMulti($urls, $options, $attempts);
 
         foreach ($responses as $domain => $resp) {
             
@@ -71,6 +71,7 @@ class rex_cronjob_project_manager_data extends rex_cronjob
                 
                 // WRITE LOGFILE
                 project_manager_logger::log('Status 0', 'Project Manager Server');
+                project_manager_logger::failure($domain, 'API meldet status=' . (int) $json['status'] . ' (z. B. falscher API-Schlüssel)');
                 
               }
               
@@ -81,6 +82,7 @@ class rex_cronjob_project_manager_data extends rex_cronjob
                
                //WRITE LOGFILE
                project_manager_logger::log('Status -1', 'Project Manager Server');
+               project_manager_logger::failure($domain, project_manager_client_api::formatAttempts(isset($attempts[$domain]) ? $attempts[$domain] : array()));
                
                
             }
