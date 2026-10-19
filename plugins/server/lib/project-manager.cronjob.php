@@ -8,18 +8,17 @@ class rex_cronjob_project_manager_data extends rex_cronjob
         $websites = rex_sql::factory()->setDebug(0)->getArray('SELECT * FROM ' . rex::getTable('project_manager_domain') . ' ORDER BY updatedate asc'); 
 
         /* Addon-Abruf */
-        $multi_curl = curl_multi_init();
-        $resps = array();
         $options = array(
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_AUTOREFERER    => true, 
-            CURLOPT_MAXREDIRS      => 5, 
+            CURLOPT_AUTOREFERER    => true,
+            CURLOPT_MAXREDIRS      => 5,
             CURLOPT_HEADER         => false,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:86.0) Gecko/20100101 Firefox/86.0',
             CURLOPT_TIMEOUT => 5 // seconds
         );
+        $urls = array();
         foreach($websites as $website) {
           
             $domain = $website['domain'];
@@ -32,40 +31,15 @@ class rex_cronjob_project_manager_data extends rex_cronjob
             
             $timestamp = time();
             
-            $url = $protocol.urlencode($domain)."/index.php?rex-api-call=project_manager&api_key=".$website['api_key'].'&t='.$timestamp.$param;
-            
-            if ($cms == 5)
-              $url = $protocol.urlencode($domain)."/index.php?rex-api-call=project_manager&api_key=".$website['api_key'].'&t='.$timestamp.$param;
-            
-            if ($cms == 4)
-              $url = $protocol.urlencode($domain)."/project_manager_client.php?rex-api-call=project_manager&api_key=".$website['api_key'].'&t='.$timestamp.$param;
-
-            $resps[$domain] = curl_init($url);
-            curl_setopt_array($resps[$domain], $options);
-            curl_multi_add_handle($multi_curl, $resps[$domain]);
+            $query = 'rex-api-call=project_manager&api_key='.$website['api_key'].'&t='.$timestamp.$param;
+            $urls[$domain] = project_manager_client_api::getUrls($protocol, $domain, $query, $cms);
             
         }
         
-        $active = null;
-        
-        do {
-          $mrc = curl_multi_exec($multi_curl, $active);
-        } while ($mrc == CURLM_CALL_MULTI_PERFORM);
-        
-        while ($active && $mrc == CURLM_OK) {
-          if (curl_multi_select($multi_curl) != -1) {
-            do {
-              $mrc = curl_multi_exec($multi_curl, $active);
-            } while ($mrc == CURLM_CALL_MULTI_PERFORM);
-          }
-        }
-        
-      
+        // erst "/index.php?rex-api-call", bei ungültiger Antwort zusätzlich "/?rex-api-call"
+        $responses = project_manager_client_api::fetchMulti($urls, $options);
 
-        foreach ($resps as $domain => $response) {
-          
-            $resp = curl_multi_getcontent($response);
-            curl_multi_remove_handle($multi_curl, $response);
+        foreach ($responses as $domain => $resp) {
             
             $json = json_decode($resp, true);
             $json_result = json_encode($json);
@@ -118,8 +92,6 @@ class rex_cronjob_project_manager_data extends rex_cronjob
 
         }
         
-        curl_multi_close($multi_curl);
-
         return true;
 
     }
