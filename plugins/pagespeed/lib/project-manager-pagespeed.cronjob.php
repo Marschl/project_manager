@@ -31,7 +31,7 @@ class rex_cronjob_project_manager_pagespeed extends rex_cronjob
         
         // Der erste Block läuft immer, solange nicht gewartet werden muss. Jeder weitere nur, wenn die Zeit
         // reicht. Die Projekte werden nach dem ältesten Eintrag abgearbeitet, der Rest folgt im nächsten Lauf.
-        if (($i > 0 || $wait > 0) && !self::hasTimeForNextBlock($elapsed + $wait, $lastBlock, $limit)) {
+        if (($i > 0 || $wait > 0) && ($wait > $this->maxWait() || !self::hasTimeForNextBlock($elapsed + $wait, $lastBlock, $limit))) {
           if ($success) {
             $this->setMessage($i . ' von ' . $blocks . ' Blöcken, Rest im nächsten Lauf (max_execution_time ' . $limit . ' s, Limit ' . $perMinute . ' Abfragen pro Minute)');
           }
@@ -66,6 +66,15 @@ class rex_cronjob_project_manager_pagespeed extends rex_cronjob
      */
     protected function getTimeLimit() {
       return (int) ini_get('max_execution_time');
+    }
+    
+    /**
+     * Längste Wartezeit innerhalb eines Laufs in Sekunden. Im Browser (Klick im Backend) würde der Nutzer
+     * sonst minutenlang auf die Antwort warten, dort läuft pro Aufruf ein Block. Auf der Konsole (Cron)
+     * wird gewartet, bis alle Blöcke durch sind.
+     */
+    protected function maxWait() {
+      return 'cli' === PHP_SAPI ? PHP_INT_MAX : 10;
     }
     
     /**
