@@ -7,6 +7,8 @@ project_manager_pagespeed_api_key_title = Einstellungen
 project_manager_pagespeed_api_key_label = PageSpeed API-Schlüssel
 project_manager_pagespeed_api_key_notice = PageSpeed API-Schlüssel, z.B. <code>AIzaSyCp0Em_UPY78238es-9CZViEbq7CB_zcFBs</code>
 project_manager_pagespeed_domain_norows_message = Kein Projekt vorhanden 
+project_manager_pagespeed_refresh_hint = Aktuell (Status in Ordnung, jünger als 24 Stunden): {0} von {1} Projekten. Die Google-API erlaubt {2} Abfragen pro Minute, pro Klick wird daher nur ein Teil der Projekte aktualisiert. Bitte nach etwa einer Minute erneut klicken, bis alle aktuell sind.
+project_manager_pagespeed_refresh_wait = Nächster Abruf möglich in {0} s.
 project_manager_cronjob_pagespeed_name = Projekt Manager: Hole Pagespeed Daten
 
 

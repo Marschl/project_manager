@@ -38,6 +38,20 @@ if ($showlist) {
 	}
 	echo rex_view::info("Anzahl der Domains und Projekte: ".count($items) . $refresh);
 	
+	// Die Google-API erlaubt nur wenige Abfragen pro Minute, ein Klick aktualisiert daher nur einen Teil der Projekte
+	if ($cronjobId != NULL) {
+	  $current = rex_cronjob_project_manager_pagespeed::countCurrent($items, 24, time());
+	  if ($current < count($items)) {
+	    $perMinute = rex_cronjob_project_manager_pagespeed::currentRateLimit();
+	    $hint = $this->i18n('project_manager_pagespeed_refresh_hint', $current, count($items), $perMinute);
+	    $wait = rex_cronjob_project_manager_pagespeed::secondsUntilNextBlock($perMinute, microtime(true));
+	    if ($wait > 0) {
+	      $hint .= ' ' . $this->i18n('project_manager_pagespeed_refresh_wait', $wait);
+	    }
+	    echo rex_view::info($hint);
+	  }
+	}
+	
   $list = rex_list::factory($sql, 1000);
   $list->addTableAttribute('class', 'table-striped');
   $list->setNoRowsMessage($this->i18n('project_manager_pagespeed_domain_norows_message'));
